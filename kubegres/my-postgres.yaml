@@ -1,0 +1,107 @@
+---
+apiVersion: kubegres.reactive-tech.io/v1
+kind: Kubegres
+metadata:
+  name: mypostgres
+  namespace: default
+
+spec:
+  replicas: 1
+  image: ghcr.io/tw-damo/postgresql16:615d2c8
+  #image: postgres:16.2
+  database:
+    size: 10240Mi
+  customConfig: mypostgres-conf
+  env:
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: mypostgres-secret
+          key: superUserPassword
+
+    - name: POSTGRES_REPLICATION_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: mypostgres-secret
+          key: replicationUserPassword
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mypostgres-secret
+  namespace: default
+type: Opaque
+stringData:
+  superUserPassword: pgpassword
+  replicationUserPassword: pgreppassword
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mypostgres-conf
+  namespace: default
+
+data:
+  postgres.conf: |
+
+    # Replication configs
+    listen_addresses = '*'
+    max_wal_senders = 10
+    max_connections = 100
+    shared_buffers = 1024MB
+    max_locks_per_transaction = 128
+    # Logging
+    log_destination = 'stderr,csvlog'
+    logging_collector = on
+    log_directory = 'pg_log'
+    log_filename= 'postgresql-%Y-%m-%d_%H%M%S.log'
+
+    shared_preload_libraries = 'timescaledb,age'
+  primary_init_script.sh: |
+    #!/bin/bash
+    set -e
+
+    # This script assumes that the env-var $POSTGRES_MY_DB_PASSWORD contains the password of the custom user to create.
+    # You can add any env-var in your Kubegres resource config YAML.
+
+    dt=$(date '+%d/%m/%Y %H:%M:%S');
+    echo "$dt - Running init script the 1st time Primary PostgreSql container is created...";
+    echo "$dt - Installing extension timescaledb"
+    PGPASSWORD=${POSTGRES_PASSWORD} psql -Upostgres -v ON_ERROR_STOP=1  <<-EOSQL
+    CREATE DATABASE tsdb;
+    \connect tsdb;
+    CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+    EOSQL
+
+    echo "$dt - Installing extension AGE"
+    PGPASSWORD=${POSTGRES_PASSWORD} psql -Upostgres -v ON_ERROR_STOP=1  <<-EOSQL
+    CREATE DATABASE agedb;
+    \connect agedb;
+    CREATE EXTENSION IF NOT EXISTS age;
+    EOSQL
+
+    echo "$dt - Init script is completed";
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: mypostgres
+  name: mypostgres-nodeport
+  namespace: default
+spec:
+  externalTrafficPolicy: Cluster
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - nodePort: 30432
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+  selector:
+    app: mypostgres
+    replicationRole: primary
+  sessionAffinity: None
+  type: NodePort
