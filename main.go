@@ -35,8 +35,10 @@ func formatTime() map[string]string {
 	hour := now.Hour()
 
 	return map[string]string{
-		"date": fmt.Sprintf("%d%d%d", year, month, day),
-		"hour": fmt.Sprintf("%d", hour),
+		"year":  fmt.Sprintf("%d", year),
+		"month": fmt.Sprintf("%d", month),
+		"day":   fmt.Sprintf("%d", day),
+		"hour":  fmt.Sprintf("%d", hour),
 	}
 }
 
@@ -49,16 +51,14 @@ func main() {
 		}
 	}(db)
 	datetime := formatTime()
-	date := datetime["date"]
-	hour := datetime["hour"]
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		quedou.StartWorkOnQuedou(db, date, hour, TOKEN)
+		quedou.StartWorkOnQuedou(db, datetime, TOKEN)
 		wg.Done()
 	}()
 	go func() {
-		fourfriends.StartWorkFourFriends(db, date, hour)
+		fourfriends.StartWorkFourFriends(db, datetime)
 		wg.Done()
 	}()
 	wg.Wait()

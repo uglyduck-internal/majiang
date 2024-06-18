@@ -14,7 +14,9 @@ import (
 
 func initTable(db *sql.DB) {
 	statement, err := db.Prepare(
-		`CREATE TABLE IF NOT EXISTS fourfriends ("date" TEXT, 
+		`CREATE TABLE IF NOT EXISTS fourfriends_data ("year" TEXT, 
+"month" TEXT,
+"day" TEXT,
 "hour" TEXT,
 "city_code" TEXT,
 "room_id" TEXT,
@@ -24,7 +26,7 @@ func initTable(db *sql.DB) {
 "store_address" TEXT,
 "price" TEXT,
 "status" TEXT,
-UNIQUE(date, hour, room_id)
+UNIQUE(year, month, day, hour, room_id)
 );`)
 	if err != nil {
 		panic(err)
@@ -157,7 +159,7 @@ func GetRooms(store map[string]interface{}) interface{} {
 	return result
 }
 
-func insertRoom(db *sql.DB, date string, hour string, cityCode string, store interface{}, room interface{}) {
+func insertRoom(db *sql.DB, datetime map[string]string, cityCode string, store interface{}, room interface{}) {
 	stored := store.(map[string]interface{})
 	roomd := room.(map[string]interface{})
 
@@ -174,20 +176,24 @@ func insertRoom(db *sql.DB, date string, hour string, cityCode string, store int
 	}
 
 	statement, err := db.Prepare(
-		`INSERT INTO fourfriends (date, hour, city_code, room_id, room_name, store_name, store_id, store_address, price, status)
-    				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`)
+		`INSERT INTO fourfriends_data (year, month, day, hour, city_code, room_id, room_name, store_name, store_id, store_address, price, status)
+    				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`)
 	if err != nil {
 		fmt.Println("ERROR: Failed to prepare the SQL statement")
 		fmt.Println(err)
 		return
 	}
-	_, err = statement.Exec(date, hour, cityCode, roomID, roomName, storeName, storeID, storeAddress, price, status)
+	year := datetime["year"]
+	month := datetime["month"]
+	day := datetime["day"]
+	hour := datetime["hour"]
+	_, err = statement.Exec(year, month, day, hour, cityCode, roomID, roomName, storeName, storeID, storeAddress, price, status)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func StartWorkFourFriends(db *sql.DB, date string, hour string) {
+func StartWorkFourFriends(db *sql.DB, datetime map[string]string) {
 	initTable(db)
 	cities := GetCities()
 	var wg sync.WaitGroup
@@ -209,7 +215,7 @@ func StartWorkFourFriends(db *sql.DB, date string, hour string) {
 				curStore := store
 				wg.Add(1)
 				go func() {
-					handleStore(db, date, hour, curCityCode, curStore)
+					handleStore(db, datetime, curCityCode, curStore)
 					wg.Done()
 				}()
 			}
@@ -218,9 +224,9 @@ func StartWorkFourFriends(db *sql.DB, date string, hour string) {
 	wg.Wait()
 }
 
-func handleStore(db *sql.DB, date string, hour string, cityCode string, store interface{}) {
+func handleStore(db *sql.DB, datetime map[string]string, cityCode string, store interface{}) {
 	rooms := GetRooms(store.(map[string]interface{})).(map[string]interface{})["result"].(map[string]interface{})["room_list"]
 	for _, room := range rooms.([]interface{}) {
-		go insertRoom(db, date, hour, cityCode, store, room)
+		insertRoom(db, datetime, cityCode, store, room)
 	}
 }
