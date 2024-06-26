@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"majiang/utils"
 	"net/http"
 	"sync"
 )
@@ -42,7 +43,7 @@ func GetRooms(store map[string]interface{}, token string) interface{} {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 MicroMessenger/6.8.0(0x16080000) NetType/WIFI MiniProgramEnv/Mac MacWechat/WMPF MacWechat/3.8.7(0x13080710) XWEB/1191")
 	req.Header.Set("Referer", "https://servicewechat.com/wx697f0b89354ff12e/26/page-frame.html")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	client := &http.Client{}
+	client, _ := utils.GetProxy()
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
@@ -84,7 +85,7 @@ func getStores(token string) interface{} {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 MicroMessenger/6.8.0(0x16080000) NetType/WIFI MiniProgramEnv/Mac MacWechat/WMPF MacWechat/3.8.7(0x13080710) XWEB/1191")
 	req.Header.Set("Referer", "https://servicewechat.com/wx697f0b89354ff12e/26/page-frame.html")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	client := &http.Client{}
+	client, _ := utils.GetProxy()
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("ERROR: Failed to send the HTTP request")

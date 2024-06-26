@@ -5,7 +5,6 @@ import (
 	"fmt"
 	_ "github.com/lib/pq" // Import the PostgreSQL driver
 	"majiang/fourfriends"
-	"majiang/proxy"
 	"majiang/quedou"
 	"sync"
 	"time"
@@ -44,8 +43,6 @@ func formatTime() map[string]string {
 }
 
 func main() {
-	proxy.GetProxy()
-	panic("test")
 	db := initDB()
 	defer func(db *sql.DB) {
 		err := db.Close()
