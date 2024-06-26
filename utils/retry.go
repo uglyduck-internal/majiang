@@ -14,7 +14,7 @@ func WithRetryGetRooms(action GetRoomsFunc, maxRetries int) GetRoomsFunc {
 		for i := 0; i < maxRetries; i++ {
 			result, err := action(store)
 			if err != nil {
-				log.Printf("[Retry %d] Failed to [GetRooms]: %s", i, err)
+				log.Printf("[Retry %d] Failed to [GetRooms]: %s, param: %v", i, err, store)
 				time.Sleep(30 * time.Second)
 				continue
 			}

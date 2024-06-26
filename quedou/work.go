@@ -43,7 +43,8 @@ func GetRooms(store map[string]interface{}, token string) interface{} {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 MicroMessenger/6.8.0(0x16080000) NetType/WIFI MiniProgramEnv/Mac MacWechat/WMPF MacWechat/3.8.7(0x13080710) XWEB/1191")
 	req.Header.Set("Referer", "https://servicewechat.com/wx697f0b89354ff12e/26/page-frame.html")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	client, _ := utils.GetProxy()
+	getProxy := utils.WithRetryGetProxy(utils.GetProxy, 10)
+	client, _ := getProxy()
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
@@ -85,7 +86,8 @@ func getStores(token string) interface{} {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 MicroMessenger/6.8.0(0x16080000) NetType/WIFI MiniProgramEnv/Mac MacWechat/WMPF MacWechat/3.8.7(0x13080710) XWEB/1191")
 	req.Header.Set("Referer", "https://servicewechat.com/wx697f0b89354ff12e/26/page-frame.html")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	client, _ := utils.GetProxy()
+	getProxy := utils.WithRetryGetProxy(utils.GetProxy, 10)
+	client, _ := getProxy()
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("ERROR: Failed to send the HTTP request")
@@ -144,10 +146,10 @@ func insertRoom(db *sql.DB, datetime map[string]string, store interface{}, room 
 	month := datetime["month"]
 	day := datetime["day"]
 	hour := datetime["hour"]
-	_, err = statement.Exec(year, month, day, hour, roomID, roomName, storeName, storeID, storeAddress, price, status)
-	if err != nil {
-		fmt.Println(err)
-	}
+	statement.Exec(year, month, day, hour, roomID, roomName, storeName, storeID, storeAddress, price, status)
+	//if err != nil {
+	//	fmt.Println(err)
+	//}
 }
 
 func StartWorkOnQuedou(db *sql.DB, datetime map[string]string, token string) {

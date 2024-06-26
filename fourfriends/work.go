@@ -99,7 +99,7 @@ func GetResult(pageNum int, cityCode string) (interface{}, error) {
 	var result map[string]interface{}
 	err = json.Unmarshal(respBody, &result)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse the response body as JSON: %s", respBody)
+		return nil, fmt.Errorf("Failed to parse the response body as JSON: %s, client: %s", respBody, client)
 	}
 
 	// check the response code
@@ -162,7 +162,7 @@ func GetRooms(store map[string]interface{}) (interface{}, error) {
 	var result map[string]interface{}
 	err = json.Unmarshal(respBody, &result)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse the response body as JSON: %s", respBody)
+		return nil, fmt.Errorf("Failed to parse the response body as JSON: %s, client: %v", respBody, client)
 	}
 	if result["result"].(map[string]interface{})["room_list"] == nil {
 		return nil, fmt.Errorf("No room list in the response body: %s", respBody)
@@ -198,10 +198,10 @@ func insertRoom(db *sql.DB, datetime map[string]string, cityCode string, store i
 	month := datetime["month"]
 	day := datetime["day"]
 	hour := datetime["hour"]
-	_, err = statement.Exec(year, month, day, hour, cityCode, roomID, roomName, storeName, storeID, storeAddress, price, status)
-	if err != nil {
-		fmt.Println(err)
-	}
+	statement.Exec(year, month, day, hour, cityCode, roomID, roomName, storeName, storeID, storeAddress, price, status)
+	//if err != nil {
+	//	fmt.Println(err)
+	//}
 }
 
 func StartWorkFourFriends(db *sql.DB, datetime map[string]string) {
@@ -210,6 +210,9 @@ func StartWorkFourFriends(db *sql.DB, datetime map[string]string) {
 	var wg sync.WaitGroup
 	for _, city := range cities.([]interface{}) {
 		cityCode := city.(map[string]interface{})["city_code"].(string)
+		if cityCode != "430100" {
+			continue
+		}
 		pageNum := 0
 		for {
 			pageNum++
