@@ -83,7 +83,7 @@ func GetResult(pageNum int, cityCode string) (interface{}, error) {
 
 	bodyStr := fmt.Sprintf("oem_id=%s&lat=%s&lng=%s&store_name=%s&city_code=%s&page=%s&limit=%s&is_included_qipai=%s&is_included_billiards=%s&is_experience=%s&timestamp=%s&api_version_interceptor=%s&sign=%s", oem_id, lat, lng, store_name, city_code, page, limit, is_included_qipai, is_included_billiards, is_experience, timestamp, api_version_interceptor, sign)
 	body := strings.NewReader(bodyStr)
-	getProxy := utils.WithRetryGetProxy(utils.GetProxy, 3)
+	getProxy := utils.WithRetryGetProxy(utils.GetProxy, 10)
 	client, _ := getProxy()
 	resp, err := client.Post("https://iot.hs499.com/applet/user/selectStore", "application/x-www-form-urlencoded", body)
 	if err != nil {
@@ -111,14 +111,14 @@ func GetResult(pageNum int, cityCode string) (interface{}, error) {
 }
 
 func GetStores(pageNum int, cityCode string) interface{} {
-	getResult := utils.WithRetryGetResult(GetResult, 3)
+	getResult := utils.WithRetryGetResult(GetResult, 10)
 	result, _ := getResult(pageNum, cityCode)
 	storeList := result.(map[string]interface{})["result"].(map[string]interface{})["store_list"]
 	return storeList
 }
 
 func GetCities() interface{} {
-	getResult := utils.WithRetryGetResult(GetResult, 3)
+	getResult := utils.WithRetryGetResult(GetResult, 10)
 	result, _ := getResult(1, "")
 	cityList := result.(map[string]interface{})["result"].(map[string]interface{})["open_city_list"]
 	return cityList
@@ -146,7 +146,7 @@ func GetRooms(store map[string]interface{}) (interface{}, error) {
 	sign := calculateMD5(combineStr)
 	bodyStr := fmt.Sprintf("oem_id=%s&lat=%s&lng=%s&store_id=%s&is_experience=%s&user_id=%s&api_version=%s&timestamp=%s&api_version_interceptor=%s&sign=%s", oemID, lat, lng, storeID, isExperience, userID, apiVersion, timestamp, apiVersionInterceptor, sign)
 	body := strings.NewReader(bodyStr)
-	getProxy := utils.WithRetryGetProxy(utils.GetProxy, 3)
+	getProxy := utils.WithRetryGetProxy(utils.GetProxy, 10)
 	client, _ := getProxy()
 	resp, err := client.Post("https://iot.hs499.com/applet/user/home", "application/x-www-form-urlencoded", body)
 	if err != nil {
@@ -237,7 +237,7 @@ func StartWorkFourFriends(db *sql.DB, datetime map[string]string) {
 }
 
 func handleStore(db *sql.DB, datetime map[string]string, cityCode string, store interface{}) {
-	getRooms := utils.WithRetryGetRooms(GetRooms, 3)
+	getRooms := utils.WithRetryGetRooms(GetRooms, 10)
 	rooms, err := getRooms(store.(map[string]interface{}))
 	if err != nil {
 		log.Printf("ERROR: [handleStore] Failed to get rooms for store %s", store.(map[string]interface{})["store_name"])

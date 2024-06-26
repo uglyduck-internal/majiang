@@ -15,7 +15,7 @@ func WithRetryGetRooms(action GetRoomsFunc, maxRetries int) GetRoomsFunc {
 			result, err := action(store)
 			if err != nil {
 				log.Printf("[Retry %d] Failed to [GetRooms]: %s", i, err)
-				time.Sleep(5 * time.Second)
+				time.Sleep(30 * time.Second)
 				continue
 			}
 			return result, nil
@@ -32,7 +32,7 @@ func WithRetryGetResult(action GetResultFunc, maxRetries int) GetResultFunc {
 			result, err := action(a, b)
 			if err != nil {
 				log.Printf("[Retry %d] Failed to [GetResult]: %s", i, err)
-				time.Sleep(5 * time.Second)
+				time.Sleep(30 * time.Second)
 				continue
 			}
 			return result, nil
@@ -49,7 +49,7 @@ func WithRetryGetProxy(action GetProxyFunc, maxRetries int) GetProxyFunc {
 			result, err := action()
 			if err != nil {
 				log.Printf("[Retry %d] Failed to [GetProxy]: %s", i, err)
-				time.Sleep(5 * time.Second)
+				time.Sleep(30 * time.Second)
 				continue
 			}
 			return result, nil
