@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -74,45 +75,56 @@ func GetResult(pageNum int, cityCode string) interface{} {
 	is_included_billiards := "0"
 	is_experience := "0"
 	api_version_interceptor := "1"
-	timestamp := fmt.Sprintf("%d", time.Now().UnixNano()/int64(time.Millisecond))
+	for {
+		timestamp := fmt.Sprintf("%d", time.Now().UnixNano()/int64(time.Millisecond))
 
-	combineStr := fmt.Sprintf("api_version_interceptor=%scity_code=%sis_experience=%sis_included_billiards=%sis_included_qipai=%slat=%slimit=%slng=%soem_id=%spage=%sstore_name=%stimestamp=%ssgpy@2023!hsjt05", api_version_interceptor, city_code, is_experience, is_included_billiards, is_included_qipai, lat, limit, lng, oem_id, page, store_name, timestamp)
-	// calculate md5 of combineStr
-	sign := calculateMD5(combineStr)
+		combineStr := fmt.Sprintf("api_version_interceptor=%scity_code=%sis_experience=%sis_included_billiards=%sis_included_qipai=%slat=%slimit=%slng=%soem_id=%spage=%sstore_name=%stimestamp=%ssgpy@2023!hsjt05", api_version_interceptor, city_code, is_experience, is_included_billiards, is_included_qipai, lat, limit, lng, oem_id, page, store_name, timestamp)
+		// calculate md5 of combineStr
+		sign := calculateMD5(combineStr)
 
-	bodyStr := fmt.Sprintf("oem_id=%s&lat=%s&lng=%s&store_name=%s&city_code=%s&page=%s&limit=%s&is_included_qipai=%s&is_included_billiards=%s&is_experience=%s&timestamp=%s&api_version_interceptor=%s&sign=%s", oem_id, lat, lng, store_name, city_code, page, limit, is_included_qipai, is_included_billiards, is_experience, timestamp, api_version_interceptor, sign)
-	body := strings.NewReader(bodyStr)
+		bodyStr := fmt.Sprintf("oem_id=%s&lat=%s&lng=%s&store_name=%s&city_code=%s&page=%s&limit=%s&is_included_qipai=%s&is_included_billiards=%s&is_experience=%s&timestamp=%s&api_version_interceptor=%s&sign=%s", oem_id, lat, lng, store_name, city_code, page, limit, is_included_qipai, is_included_billiards, is_experience, timestamp, api_version_interceptor, sign)
+		body := strings.NewReader(bodyStr)
 
-	resp, err := http.Post("https://iot.hs499.com/applet/user/selectStore", "application/x-www-form-urlencoded", body)
-	if err != nil {
-		fmt.Println("ERROR: Failed to send the HTTP request", err)
-		return nil
+		resp, err := http.Post("https://iot.hs499.com/applet/user/selectStore", "application/x-www-form-urlencoded", body)
+		if err != nil {
+			fmt.Println("ERROR: Failed to send the HTTP request", err)
+			return nil
+		}
+		defer resp.Body.Close()
+
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println("ERROR: Failed to read the response body")
+			return nil
+		}
+
+		var result map[string]interface{}
+		err = json.Unmarshal(respBody, &result)
+		if err != nil {
+			log.Printf("ERROR: [GetResult] Failed to parse the response body as JSON: %s", respBody)
+			time.Sleep(1 * time.Minute)
+			continue
+		}
+		return result
 	}
-	defer resp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("ERROR: Failed to read the response body")
-		return nil
-	}
-
-	var result map[string]interface{}
-	err = json.Unmarshal(respBody, &result)
-	if err != nil {
-		fmt.Println("ERROR: [getStores] Failed to parse the response body as JSON")
-		return nil
-	}
-	return result
 }
 
 func GetStores(pageNum int, cityCode string) interface{} {
 	result := GetResult(pageNum, cityCode)
+	if result == nil {
+		log.Printf("ERROR: Failed to get the store list, page: %d, cityCode: %s", pageNum, cityCode)
+		return nil
+	}
 	storeList := result.(map[string]interface{})["result"].(map[string]interface{})["store_list"]
 	return storeList
 }
 
 func GetCities() interface{} {
 	result := GetResult(1, "")
+	if result == nil {
+		log.Printf("ERROR: Failed to get the city list")
+		return nil
+	}
 	cityList := result.(map[string]interface{})["result"].(map[string]interface{})["open_city_list"]
 	return cityList
 }
@@ -130,33 +142,36 @@ func GetRooms(store map[string]interface{}) interface{} {
 	lng := ""
 	storeID := fmt.Sprintf("%s", store["store_id"])
 	oemID := "300ab330835844d58a8bccfc1c8b0800"
-	timestamp := fmt.Sprintf("%d", time.Now().UnixNano()/int64(time.Millisecond))
-	userID := ""
+	for {
+		timestamp := fmt.Sprintf("%d", time.Now().UnixNano()/int64(time.Millisecond))
+		userID := ""
 
-	combineStr := fmt.Sprintf("api_version=%sapi_version_interceptor=%sis_experience=%slat=%slng=%soem_id=%sstore_id=%stimestamp=%suser_id=%ssgpy@2023!hsjt05", apiVersion, apiVersionInterceptor, isExperience, lat, lng, oemID, storeID, timestamp, userID)
-	// calculate md5 of combineStr
-	sign := calculateMD5(combineStr)
-	bodyStr := fmt.Sprintf("oem_id=%s&lat=%s&lng=%s&store_id=%s&is_experience=%s&user_id=%s&api_version=%s&timestamp=%s&api_version_interceptor=%s&sign=%s", oemID, lat, lng, storeID, isExperience, userID, apiVersion, timestamp, apiVersionInterceptor, sign)
-	body := strings.NewReader(bodyStr)
-	resp, err := http.Post("https://iot.hs499.com/applet/user/home", "application/x-www-form-urlencoded", body)
-	if err != nil {
-		fmt.Println("ERROR: Failed to send the HTTP request", err)
-		return nil
-	}
-	defer resp.Body.Close()
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("ERROR: Failed to read the response body")
-		return nil
-	}
+		combineStr := fmt.Sprintf("api_version=%sapi_version_interceptor=%sis_experience=%slat=%slng=%soem_id=%sstore_id=%stimestamp=%suser_id=%ssgpy@2023!hsjt05", apiVersion, apiVersionInterceptor, isExperience, lat, lng, oemID, storeID, timestamp, userID)
+		// calculate md5 of combineStr
+		sign := calculateMD5(combineStr)
+		bodyStr := fmt.Sprintf("oem_id=%s&lat=%s&lng=%s&store_id=%s&is_experience=%s&user_id=%s&api_version=%s&timestamp=%s&api_version_interceptor=%s&sign=%s", oemID, lat, lng, storeID, isExperience, userID, apiVersion, timestamp, apiVersionInterceptor, sign)
+		body := strings.NewReader(bodyStr)
+		resp, err := http.Post("https://iot.hs499.com/applet/user/home", "application/x-www-form-urlencoded", body)
+		if err != nil {
+			fmt.Println("ERROR: Failed to send the HTTP request", err)
+			return nil
+		}
+		defer resp.Body.Close()
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println("ERROR: Failed to read the response body")
+			return nil
+		}
 
-	var result map[string]interface{}
-	err = json.Unmarshal(respBody, &result)
-	if err != nil {
-		fmt.Println("ERROR: [getStores] Failed to parse the response body as JSON")
-		return nil
+		var result map[string]interface{}
+		err = json.Unmarshal(respBody, &result)
+		if err != nil {
+			log.Printf("ERROR: [GetRooms] Failed to parse the response body as JSON: %s", respBody)
+			time.Sleep(1 * time.Minute)
+			continue
+		}
+		return result
 	}
-	return result
 }
 
 func insertRoom(db *sql.DB, datetime map[string]string, cityCode string, store interface{}, room interface{}) {
@@ -203,7 +218,8 @@ func StartWorkFourFriends(db *sql.DB, datetime map[string]string) {
 		for {
 			pageNum++
 			storeList := GetStores(pageNum, cityCode)
-			if len(storeList.([]interface{})) == 0 {
+			if len(storeList.([]interface{})) == 0 || storeList == nil {
+				log.Printf("INFO: No more stores in city %s", cityCode)
 				break
 			}
 			for _, store := range storeList.([]interface{}) {
