@@ -99,12 +99,12 @@ func GetResult(pageNum int, cityCode string) (interface{}, error) {
 	var result map[string]interface{}
 	err = json.Unmarshal(respBody, &result)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse the response body as JSON: %s, client: %s", respBody, client)
+		return nil, fmt.Errorf("Failed to parse the response body as JSON")
 	}
 
 	// check the response code
 	returnCode := fmt.Sprintf("%f", result["code"].(float64))
-	if strings.HasPrefix(returnCode, "5") {
+	if strings.HasPrefix(returnCode, "5") || strings.HasPrefix(returnCode, "-") {
 		return nil, fmt.Errorf("Response code is: %s", returnCode)
 	}
 	return result, nil
@@ -114,6 +114,9 @@ func GetStores(pageNum int, cityCode string) interface{} {
 	getResult := utils.WithRetryGetResult(GetResult, 10)
 	result, _ := getResult(pageNum, cityCode)
 	storeList := result.(map[string]interface{})["result"].(map[string]interface{})["store_list"]
+	if storeList == nil {
+		log.Fatalf("Result: %v", result)
+	}
 	return storeList
 }
 
@@ -210,7 +213,7 @@ func StartWorkFourFriends(db *sql.DB, datetime map[string]string) {
 	var wg sync.WaitGroup
 	for _, city := range cities.([]interface{}) {
 		cityCode := city.(map[string]interface{})["city_code"].(string)
-		if cityCode != "430100" {
+		if cityCode != "420100" {
 			continue
 		}
 		pageNum := 0

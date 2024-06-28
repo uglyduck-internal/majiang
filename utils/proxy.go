@@ -41,6 +41,6 @@ func GetProxy() (*http.Client, error) {
 		}
 		return client, nil
 	} else {
-		return nil, fmt.Errorf("Failed to get proxy")
+		return nil, fmt.Errorf("Failed to get proxy, %s", body)
 	}
 }

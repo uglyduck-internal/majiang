@@ -5,7 +5,6 @@ import (
 	"fmt"
 	_ "github.com/lib/pq" // Import the PostgreSQL driver
 	"majiang/fourfriends"
-	"majiang/quedou"
 	"sync"
 	"time"
 )
@@ -52,11 +51,11 @@ func main() {
 	}(db)
 	datetime := formatTime()
 	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		quedou.StartWorkOnQuedou(db, datetime, TOKEN)
-		wg.Done()
-	}()
+	wg.Add(1)
+	//go func() {
+	//	quedou.StartWorkOnQuedou(db, datetime, TOKEN)
+	//	wg.Done()
+	//}()
 	go func() {
 		fourfriends.StartWorkFourFriends(db, datetime)
 		wg.Done()

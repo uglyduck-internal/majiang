@@ -49,7 +49,7 @@ func WithRetryGetProxy(action GetProxyFunc, maxRetries int) GetProxyFunc {
 			result, err := action()
 			if err != nil {
 				log.Printf("[Retry %d] Failed to [GetProxy]: %s", i, err)
-				time.Sleep(30 * time.Second)
+				time.Sleep(1 * time.Minute)
 				continue
 			}
 			return result, nil
