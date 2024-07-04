@@ -1,0 +1,180 @@
+{
+    "trigger": {
+      "schedule": {
+        "interval": "1m"
+      }
+    },
+    "input": {
+      "chain": {
+        "inputs": [
+          {
+            "current": {
+              "search": {
+                "request": {
+                  "search_type": "query_then_fetch",
+                  "indices": [
+                    ".monitoring-beats-*"
+                  ],
+                  "rest_total_hits_as_int": true,
+                  "body": {
+                    "size": 0,
+                    "query": {
+                      "bool": {
+                        "must": [
+                          {
+                            "match": {
+                              "beats_stats.beat.type": "filebeat"
+                            }
+                          },
+                          {
+                            "range": {
+                              "timestamp": {
+                                "gte": "now-10s",
+                                "lte": "now"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "aggs": {
+                      "hosts": {
+                        "terms": {
+                          "field": "beats_stats.beat.host",
+                          "size": 300
+                        },
+                        "aggs": {
+                          "write_errors": {
+                            "sum": {
+                              "field": "beats_stats.metrics.libbeat.output.write.errors"
+                            }
+                          },
+                          "read_errors": {
+                            "sum": {
+                              "field": "beats_stats.metrics.libbeat.output.read.errors"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "previous": {
+              "search": {
+                "request": {
+                  "search_type": "query_then_fetch",
+                  "indices": [
+                    ".monitoring-beats-*"
+                  ],
+                  "rest_total_hits_as_int": true,
+                  "body": {
+                    "size": 0,
+                    "query": {
+                      "bool": {
+                        "must": [
+                          {
+                            "match": {
+                              "beats_stats.beat.type": "filebeat"
+                            }
+                          },
+                          {
+                            "range": {
+                              "timestamp": {
+                                "gte": "now-1m-10s",
+                                "lte": "now-1m"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "aggs": {
+                      "hosts": {
+                        "terms": {
+                          "field": "beats_stats.beat.host",
+                          "size": 300
+                        },
+                        "aggs": {
+                          "write_errors": {
+                            "sum": {
+                              "field": "beats_stats.metrics.libbeat.output.write.errors"
+                            }
+                          },
+                          "read_errors": {
+                            "sum": {
+                              "field": "beats_stats.metrics.libbeat.output.read.errors"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "condition": {
+      "script": {
+        "source": """
+        def current = ctx.payload.current.aggregations.hosts.buckets;
+        def previous = ctx.payload.previous.aggregations.hosts.buckets;
+        def hostMap = [:];
+        def faultyHosts = [];
+  
+        for (agg in previous) {
+          hostMap[agg.key] = agg;
+        }
+  
+        for (agg in current) {
+          def prev = hostMap[agg.key];
+          if (prev == null) {
+            continue;
+          }
+          if ((agg.write_errors.value - prev.write_errors.value) / 10 != 0 || 
+              (agg.read_errors.value - prev.read_errors.value) / 10 != 0 ) {
+            faultyHosts.add(agg.key);
+          }
+        }
+  
+        def previousState = ctx.metadata.prevState != null ? ctx.metadata.prevState : [];
+        def newFaultyHosts = [];
+  
+        for (host in faultyHosts) {
+          if (previousState.contains(host)) {
+            newFaultyHosts.add(host);
+          }
+        }
+  
+        ctx.payload.faultyHosts = newFaultyHosts;
+        ctx.metadata.prevState = faultyHosts;
+  
+        return newFaultyHosts.size() > 0;
+        """,
+        "lang": "painless"
+      }
+    },
+    "actions": {
+      "send_email": {
+        "email": {
+          "profile": "standard",
+          "to": [
+            "xianyao.chen@thoughtworks.com"
+          ],
+          "subject": "AWS BEIJING Elasticsearch Watcher Alert: Filebeat Metrics Issue",
+          "body": {
+            "text": """AWS BEIJING 如下filebeat出现问题,请及时处理:
+  
+  {{#ctx.payload.faultyHosts}}{{.}}
+  {{/ctx.payload.faultyHosts}}"""
+          }
+        }
+      }
+    }
+  }
